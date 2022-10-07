@@ -112,6 +112,18 @@ public class JdbcSinkConfig extends AbstractConfig {
       + "'kafka_orders'.";
   private static final String TABLE_NAME_FORMAT_DISPLAY = "Table Name Format";
 
+  public static final String SCHEMA_RECORD_VALUE_FIELDS = "schema.record.value.fields";
+  private static final String SCHEMA_RECORD_VALUE_FIELDS_DEFAULT = "";
+  private static final String SCHEMA_RECORD_VALUE_FIELDS_DOC =
+          "List of comma-separated string for the destination schema,"
+                  + " which is mapped to record value field.\n"
+                  + "Will return value from first field  found.\n"
+                  + "For example, `mapping_organization_id` \n"
+                  + " `` for no schema from record value field" ;
+  private static final String SCHEMA_RECORD_VALUE_FIELDS_DISPLAY = "Schema from record value"
+          + " fields";
+
+
   public static final String MAX_RETRIES = "max.retries";
   private static final int MAX_RETRIES_DEFAULT = 10;
   private static final String MAX_RETRIES_DOC =
@@ -435,7 +447,18 @@ public class JdbcSinkConfig extends AbstractConfig {
           5,
           ConfigDef.Width.MEDIUM,
           DB_TIMEZONE_CONFIG_DISPLAY
-        )
+        ).define(
+                  SCHEMA_RECORD_VALUE_FIELDS,
+                  ConfigDef.Type.LIST,
+                  SCHEMA_RECORD_VALUE_FIELDS_DEFAULT,
+                  //new ConfigDef.NonEmptyString(),
+                  ConfigDef.Importance.MEDIUM,
+                  SCHEMA_RECORD_VALUE_FIELDS_DOC,
+                  DATAMAPPING_GROUP,
+                  6,
+                  ConfigDef.Width.LONG,
+                  SCHEMA_RECORD_VALUE_FIELDS_DISPLAY
+          )
         // DDL
         .define(
             AUTO_CREATE,
@@ -501,6 +524,7 @@ public class JdbcSinkConfig extends AbstractConfig {
   public final int connectionAttempts;
   public final long connectionBackoffMs;
   public final String tableNameFormat;
+  public final List<String> schemaRecordValueFields;
   public final int batchSize;
   public final boolean deleteEnabled;
   public final int maxRetries;
@@ -524,6 +548,7 @@ public class JdbcSinkConfig extends AbstractConfig {
     connectionAttempts = getInt(CONNECTION_ATTEMPTS);
     connectionBackoffMs = getLong(CONNECTION_BACKOFF);
     tableNameFormat = getString(TABLE_NAME_FORMAT).trim();
+    schemaRecordValueFields = getList(SCHEMA_RECORD_VALUE_FIELDS);
     batchSize = getInt(BATCH_SIZE);
     deleteEnabled = getBoolean(DELETE_ENABLED);
     maxRetries = getInt(MAX_RETRIES);

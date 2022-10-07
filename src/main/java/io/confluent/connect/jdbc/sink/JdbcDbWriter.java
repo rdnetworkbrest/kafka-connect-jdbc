@@ -15,6 +15,8 @@
 
 package io.confluent.connect.jdbc.sink;
 
+import org.apache.kafka.connect.data.Field;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
 import org.apache.kafka.connect.sink.SinkRecord;
 
@@ -22,6 +24,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import io.confluent.connect.jdbc.dialect.DatabaseDialect;
@@ -38,6 +41,9 @@ public class JdbcDbWriter {
   private final DbStructure dbStructure;
   final CachedConnectionProvider cachedConnectionProvider;
 
+  private boolean enableJdbcSchema = true ;
+
+
   JdbcDbWriter(final JdbcSinkConfig config, DatabaseDialect dbDialect, DbStructure dbStructure) {
     this.config = config;
     this.dbDialect = dbDialect;
@@ -47,6 +53,8 @@ public class JdbcDbWriter {
         config.connectionAttempts,
         config.connectionBackoffMs
     );
+    enableJdbcSchema =  "false".equalsIgnoreCase(System.getenv("ENABLE_JDBC_SCHEMA"))
+            ? false : true ;
   }
 
   protected CachedConnectionProvider connectionProvider(int maxConnAttempts, long retryBackoff) {
@@ -65,7 +73,7 @@ public class JdbcDbWriter {
     try {
       final Map<TableId, BufferedRecords> bufferByTable = new HashMap<>();
       for (SinkRecord record : records) {
-        final TableId tableId = destinationTable(record.topic());
+        final TableId tableId = destinationTable(record.topic(), record);
         BufferedRecords buffer = bufferByTable.get(tableId);
         if (buffer == null) {
           buffer = new BufferedRecords(config, tableId, dbDialect, dbStructure, connection);
@@ -96,15 +104,74 @@ public class JdbcDbWriter {
     cachedConnectionProvider.close();
   }
 
-  TableId destinationTable(String topic) {
-    final String tableName = config.tableNameFormat.replace("${topic}", topic);
+  //String patternRecordExpr = ".*(\\$\\{record\\.(value|key)\\.(.*)\\}).*";
+  //Pattern patternRecord = Pattern.compile(patternRecordExpr);
+
+  String findSchemaValue(Struct value, List<String> lst) {
+    for (String fieldName : lst) {
+      Field field = value.schema().field(fieldName)  ;
+      if (field != null) {
+        String result = (String) value.get(field) ;
+        return result ;
+      }
+    }
+    return null ;
+    //throw new DataException(lst.toString() + " are not a valid field name");
+  }
+
+  TableId destinationTable(String topic, SinkRecord record) {
+    //    final String tableName = config.tableNameFormat.replace("${topic}", topic);
+    String tableName = config.tableNameFormat.replace("${topic}", topic);
+    /*
+    Matcher matcher = patternRecord.matcher(tableName);
+    if (matcher.find()) {
+      //String all =  matcher.group(0) ;
+      String allExpr =  matcher.group(1) ;
+      String typeExpr =  matcher.group(2) ;
+      String selectExpr =  matcher.group(3) ;
+      switch (typeExpr) {
+        case "value" :
+          Object value = record.value();
+          if (value != null && value instanceof Struct) {
+            String schema = (String) ((Struct) value).get(selectExpr);
+            if (schema != null) {
+              tableName = tableName.replace(allExpr,schema) ;
+            }
+          }
+          break ;
+        default :
+      }
+    }
+     */
+    if (enableJdbcSchema) {
+      List<String> schemaRecordValueFields = config.schemaRecordValueFields;
+      Object value = record.value();
+      if (value != null && value instanceof Struct && !schemaRecordValueFields.isEmpty()) {
+        String schema = findSchemaValue((Struct) value, schemaRecordValueFields);
+        if (schema != null) {
+          tableName = "\"" + schema + "\"." + tableName;
+        }
+      }
+    }
+    /*
+    if (schemaRecordValue != null && !"None".equals(schemaRecordValue)) {
+      Object value = record.value();
+      if (value != null && value instanceof Struct) {
+        String schema = (String) ((Struct) value).get(schemaRecordValue);
+        if (schema != null) {
+          tableName = "\"" + schema + "\"." + tableName;
+        }
+      }
+    }
+    */
     if (tableName.isEmpty()) {
       throw new ConnectException(String.format(
-          "Destination table name for topic '%s' is empty using the format string '%s'",
-          topic,
-          config.tableNameFormat
+              "Destination table name for topic '%s' is empty using the format string '%s'",
+              topic,
+              config.tableNameFormat
       ));
     }
     return dbDialect.parseTableIdentifier(tableName);
   }
+
 }
