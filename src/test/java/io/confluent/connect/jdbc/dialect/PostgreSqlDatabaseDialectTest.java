@@ -41,6 +41,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -244,24 +245,24 @@ public class PostgreSqlDatabaseDialectTest extends BaseDialectTest<PostgreSqlDat
     builder.withColumn("columnD").type("varchar", JDBCType.VARCHAR, String.class);
     TableDefinition tableDefn = builder.build();
     assertEquals(
-        "INSERT INTO \"myTable\" (\"id1\",\"id2\",\"columnA\",\"columnB\"," +
+        "INSERT INTO \"myTable\" AS tab (\"id1\",\"id2\",\"columnA\",\"columnB\"," +
         "\"columnC\",\"columnD\") VALUES (?,?,?,?,?,?) ON CONFLICT (\"id1\"," +
         "\"id2\") DO UPDATE SET \"columnA\"=EXCLUDED" +
         ".\"columnA\",\"columnB\"=EXCLUDED.\"columnB\",\"columnC\"=EXCLUDED" +
         ".\"columnC\",\"columnD\"=EXCLUDED.\"columnD\"",
-        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, tableDefn)
+        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, tableDefn, fieldsOptional)
     );
 
     quoteIdentfiiers = QuoteMethod.NEVER;
     dialect = createDialect();
 
     assertEquals(
-        "INSERT INTO myTable (id1,id2,columnA,columnB," +
+        "INSERT INTO myTable AS tab (id1,id2,columnA,columnB," +
         "columnC,columnD) VALUES (?,?,?,?,?,?) ON CONFLICT (id1," +
         "id2) DO UPDATE SET columnA=EXCLUDED" +
         ".columnA,columnB=EXCLUDED.columnB,columnC=EXCLUDED" +
         ".columnC,columnD=EXCLUDED.columnD",
-        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, tableDefn)
+        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, tableDefn, fieldsOptional)
     );
 
     builder = new TableDefinitionBuilder().withTable("myTable");
@@ -276,14 +277,14 @@ public class PostgreSqlDatabaseDialectTest extends BaseDialectTest<PostgreSqlDat
     nonPkColumns.add(new ColumnId(tableId, "uuidColumn"));
     nonPkColumns.add(new ColumnId(tableId, "dateColumn"));
     assertEquals(
-        "INSERT INTO myTable (" +
+        "INSERT INTO myTable AS tab (" +
         "id1,id2,columnA,uuidColumn,dateColumn" +
         ") VALUES (?,?,?,?::uuid,?) ON CONFLICT (id1," +
         "id2) DO UPDATE SET " +
         "columnA=EXCLUDED.columnA," +
         "uuidColumn=EXCLUDED.uuidColumn," +
         "dateColumn=EXCLUDED.dateColumn",
-        dialect.buildUpsertQueryStatement(tableId, pkColumns, nonPkColumns, tableDefn)
+        dialect.buildUpsertQueryStatement(tableId, pkColumns, nonPkColumns, tableDefn, fieldsOptional)
     );
   }
 
@@ -356,25 +357,27 @@ public class PostgreSqlDatabaseDialectTest extends BaseDialectTest<PostgreSqlDat
     TableDefinition tableDefn = builder.build();
     TableId customer = tableDefn.id();
     assertEquals(
-        "INSERT INTO \"Customer\" (\"id\",\"name\",\"salary\",\"address\") " +
+        "INSERT INTO \"Customer\" AS tab (\"id\",\"name\",\"salary\",\"address\") " +
          "VALUES (?,?,?,?) ON CONFLICT (\"id\") DO UPDATE SET \"name\"=EXCLUDED.\"name\"," +
          "\"salary\"=EXCLUDED.\"salary\",\"address\"=EXCLUDED.\"address\"",
         dialect.buildUpsertQueryStatement(
             customer,
             columns(customer, "id"),
             columns(customer, "name", "salary", "address"),
-            tableDefn
+            tableDefn,
+            fieldsOptional
         )
     );
 
     assertEquals(
-            "INSERT INTO \"Customer\" (\"id\",\"name\",\"salary\",\"address\") " +
+            "INSERT INTO \"Customer\" AS tab (\"id\",\"name\",\"salary\",\"address\") " +
                     "VALUES (?,?,?,?) ON CONFLICT (\"id\",\"name\",\"salary\",\"address\") DO NOTHING",
             dialect.buildUpsertQueryStatement(
                     customer,
                     columns(customer, "id", "name", "salary", "address"),
                     columns(customer),
-                    tableDefn
+                    tableDefn,
+                    fieldsOptional
             )
     );
 
@@ -382,25 +385,40 @@ public class PostgreSqlDatabaseDialectTest extends BaseDialectTest<PostgreSqlDat
     dialect = createDialect();
 
     assertEquals(
-        "INSERT INTO Customer (id,name,salary,address) " +
+        "INSERT INTO Customer AS tab (id,name,salary,address) " +
         "VALUES (?,?,?,?) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name," +
         "salary=EXCLUDED.salary,address=EXCLUDED.address",
         dialect.buildUpsertQueryStatement(
             customer,
             columns(customer, "id"),
             columns(customer, "name", "salary", "address"),
-            tableDefn
+            tableDefn,
+            fieldsOptional
         )
     );
 
     assertEquals(
-            "INSERT INTO Customer (id,name,salary,address) " +
+        "INSERT INTO Customer AS tab (id,name,salary,address) " +
+        "VALUES (?,?,?,?) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name," +
+        "salary=coalesce(EXCLUDED.salary, tab.salary),address=EXCLUDED.address",
+        dialect.buildUpsertQueryStatement(
+            customer,
+            columns(customer, "id"),
+            columns(customer, "name", "salary", "address"),
+            tableDefn,
+            new HashSet<String>(Arrays.asList("salary"))
+        )
+    );
+
+    assertEquals(
+            "INSERT INTO Customer AS tab (id,name,salary,address) " +
                     "VALUES (?,?,?,?) ON CONFLICT (id,name,salary,address) DO NOTHING",
             dialect.buildUpsertQueryStatement(
                     customer,
                     columns(customer, "id", "name", "salary", "address"),
                     columns(customer),
-                    tableDefn
+                    tableDefn,
+                    fieldsOptional
             )
     );
   }

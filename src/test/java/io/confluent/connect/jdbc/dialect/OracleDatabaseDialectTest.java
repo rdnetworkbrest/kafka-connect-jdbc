@@ -188,7 +188,7 @@ public class OracleDatabaseDialectTest extends BaseDialectTest<OracleDatabaseDia
                       "\"myTable\".\"id1\",\"myTable\".\"id2\") values(incoming.\"columnA\"," +
                       "incoming.\"columnB\",incoming.\"columnC\",incoming.\"columnD\",incoming" +
                       ".\"id1\",incoming.\"id2\")";
-    String sql = dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD);
+    String sql = dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, fieldsOptional);
     assertEquals(expected, sql);
   }
 
@@ -249,7 +249,7 @@ public class OracleDatabaseDialectTest extends BaseDialectTest<OracleDatabaseDia
                       "\"ARTICLE\".\"author\") " +
                       "values(incoming.\"body\",incoming.\"title\",incoming.\"author\")";
     String actual = dialect.buildUpsertQueryStatement(article, columns(article, "title", "author"),
-                                                      columns(article, "body"));
+                                                      columns(article, "body"), fieldsOptional);
     assertEquals(expected, actual);
   }
 

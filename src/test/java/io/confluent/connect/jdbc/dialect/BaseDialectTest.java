@@ -46,8 +46,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -99,6 +101,7 @@ public abstract class BaseDialectTest<T extends GenericDatabaseDialect> {
   protected List<SinkRecordField> sinkRecordFields;
   protected T dialect;
   protected int defaultLoginTimeout;
+  protected Set<String> fieldsOptional;
 
   @Before
   public void setup() throws Exception {
@@ -125,6 +128,7 @@ public abstract class BaseDialectTest<T extends GenericDatabaseDialect> {
     columnD = new ColumnId(tableId, "columnD");
     pkColumns = Arrays.asList(columnPK1, columnPK2);
     columnsAtoD = Arrays.asList(columnA, columnB, columnC, columnD);
+    fieldsOptional = new HashSet<String>();
 
     SinkRecordField f1 = new SinkRecordField(Schema.INT32_SCHEMA, "c1", true);
     SinkRecordField f2 = new SinkRecordField(Schema.INT64_SCHEMA, "c2", false);

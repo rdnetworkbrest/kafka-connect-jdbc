@@ -243,7 +243,8 @@ public class SybaseDatabaseDialect extends GenericDatabaseDialect {
   public String buildUpsertQueryStatement(
       TableId table,
       Collection<ColumnId> keyColumns,
-      Collection<ColumnId> nonKeyColumns
+      Collection<ColumnId> nonKeyColumns,
+      Set<String> fieldsOptional
   ) {
     ExpressionBuilder builder = expressionBuilder();
     builder.append("merge into ");

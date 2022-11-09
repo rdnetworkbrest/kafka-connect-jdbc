@@ -232,7 +232,7 @@ public class SqlServerDatabaseDialectTest extends BaseDialectTest<SqlServerDatab
         "[columnB], [columnC], [columnD], [id1], [id2]) values (incoming.[columnA]," +
         "incoming.[columnB],incoming.[columnC],incoming.[columnD],incoming.[id1]," +
         "incoming.[id2]);",
-        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD)
+        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, fieldsOptional)
     );
 
     quoteIdentfiiers = QuoteMethod.NEVER;
@@ -247,7 +247,7 @@ public class SqlServerDatabaseDialectTest extends BaseDialectTest<SqlServerDatab
         "columnB, columnC, columnD, id1, id2) values (incoming.columnA," +
         "incoming.columnB,incoming.columnC,incoming.columnD,incoming.id1," +
         "incoming.id2);",
-        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD)
+        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, fieldsOptional)
     );
   }
 
@@ -305,7 +305,8 @@ public class SqlServerDatabaseDialectTest extends BaseDialectTest<SqlServerDatab
         dialect.buildUpsertQueryStatement(
             customer,
             columns(customer, "id"),
-            columns(customer, "name", "salary", "address")
+            columns(customer, "name", "salary", "address"),
+            fieldsOptional
         )
     );
 
@@ -321,7 +322,8 @@ public class SqlServerDatabaseDialectTest extends BaseDialectTest<SqlServerDatab
         dialect.buildUpsertQueryStatement(
             customer,
             columns(customer, "id"),
-            columns(customer, "name", "salary", "address")
+            columns(customer, "name", "salary", "address"),
+            fieldsOptional
         )
     );
   }
@@ -340,7 +342,8 @@ public class SqlServerDatabaseDialectTest extends BaseDialectTest<SqlServerDatab
         dialect.buildUpsertQueryStatement(
             book,
             columns(book, "author", "title"),
-            columns(book, "ISBN", "year", "pages")
+            columns(book, "ISBN", "year", "pages"),
+            fieldsOptional
         )
     );
 
@@ -357,7 +360,8 @@ public class SqlServerDatabaseDialectTest extends BaseDialectTest<SqlServerDatab
         dialect.buildUpsertQueryStatement(
             book,
             columns(book, "author", "title"),
-            columns(book, "ISBN", "year", "pages")
+            columns(book, "ISBN", "year", "pages"),
+            fieldsOptional
         )
     );
   }

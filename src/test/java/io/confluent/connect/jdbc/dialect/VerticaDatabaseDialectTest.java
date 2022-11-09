@@ -161,7 +161,7 @@ public class VerticaDatabaseDialectTest extends BaseDialectTest<VerticaDatabaseD
 
   @Test(expected = UnsupportedOperationException.class)
   public void shouldBuildUpsertStatement() {
-    dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD);
+    dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, fieldsOptional);
   }
 
 

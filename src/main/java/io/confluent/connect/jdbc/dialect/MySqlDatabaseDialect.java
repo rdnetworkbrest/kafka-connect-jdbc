@@ -26,6 +26,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.Set;
 
 import io.confluent.connect.jdbc.dialect.DatabaseDialectProvider.SubprotocolBasedProvider;
 import io.confluent.connect.jdbc.sink.metadata.SinkRecordField;
@@ -133,7 +134,8 @@ public class MySqlDatabaseDialect extends GenericDatabaseDialect {
   public String buildUpsertQueryStatement(
       TableId table,
       Collection<ColumnId> keyColumns,
-      Collection<ColumnId> nonKeyColumns
+      Collection<ColumnId> nonKeyColumns,
+      Set<String> fieldsOptional
   ) {
     //MySql doesn't support SQL 2003:merge so here how the upsert is handled
     final Transform<ColumnId> transform = (builder, col) -> {

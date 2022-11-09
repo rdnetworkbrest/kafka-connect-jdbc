@@ -26,6 +26,7 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import io.confluent.connect.jdbc.sink.JdbcSinkConfig;
 import io.confluent.connect.jdbc.sink.metadata.FieldsMetadata;
@@ -445,7 +446,8 @@ public interface DatabaseDialect extends ConnectionProvider {
   String buildUpsertQueryStatement(
       TableId table,
       Collection<ColumnId> keyColumns,
-      Collection<ColumnId> nonKeyColumns
+      Collection<ColumnId> nonKeyColumns,
+      Set<String> fieldsOptional
   );
 
   /**
@@ -471,9 +473,10 @@ public interface DatabaseDialect extends ConnectionProvider {
       TableId table,
       Collection<ColumnId> keyColumns,
       Collection<ColumnId> nonKeyColumns,
-      TableDefinition definition
+      TableDefinition definition,
+      Set<String> fieldsOptional
   ) {
-    return buildUpsertQueryStatement(table, keyColumns, nonKeyColumns);
+    return buildUpsertQueryStatement(table, keyColumns, nonKeyColumns, fieldsOptional);
   }
 
   /**

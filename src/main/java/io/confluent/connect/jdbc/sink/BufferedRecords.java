@@ -252,7 +252,8 @@ public class BufferedRecords {
               tableId,
               asColumns(fieldsMetadata.keyFieldNames),
               asColumns(fieldsMetadata.nonKeyFieldNames),
-              dbStructure.tableDefinition(connection, tableId)
+              dbStructure.tableDefinition(connection, tableId),
+              config.fieldsOptional
           );
         } catch (UnsupportedOperationException e) {
           throw new ConnectException(String.format(

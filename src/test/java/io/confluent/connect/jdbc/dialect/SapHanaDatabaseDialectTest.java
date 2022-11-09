@@ -134,7 +134,7 @@ public class SapHanaDatabaseDialectTest extends BaseDialectTest<SapHanaDatabaseD
         + "(\"id1\",\"id2\",\"columnA\",\"columnB\",\"columnC\",\"columnD\") "
         + "VALUES(?,?,?,?,?,?) "
         + "WITH PRIMARY KEY",
-        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD)
+        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, fieldsOptional)
     );
 
     quoteIdentfiiers = QuoteMethod.NEVER;
@@ -144,7 +144,7 @@ public class SapHanaDatabaseDialectTest extends BaseDialectTest<SapHanaDatabaseD
         + "(id1,id2,columnA,columnB,columnC,columnD) "
         + "VALUES(?,?,?,?,?,?) "
         + "WITH PRIMARY KEY",
-        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD)
+        dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, fieldsOptional)
     );
   }
 
@@ -198,7 +198,8 @@ public class SapHanaDatabaseDialectTest extends BaseDialectTest<SapHanaDatabaseD
         dialect.buildUpsertQueryStatement(
             tableA,
             columns(tableA, "col1"),
-            columns(tableA, "col2", "col3", "col4")
+            columns(tableA, "col2", "col3", "col4"),
+            fieldsOptional
         )
     );
 
@@ -209,7 +210,8 @@ public class SapHanaDatabaseDialectTest extends BaseDialectTest<SapHanaDatabaseD
         dialect.buildUpsertQueryStatement(
             tableA,
             columns(tableA, "col1"),
-            columns(tableA, "col2", "col3", "col4")
+            columns(tableA, "col2", "col3", "col4"),
+            fieldsOptional
         )
     );
   }

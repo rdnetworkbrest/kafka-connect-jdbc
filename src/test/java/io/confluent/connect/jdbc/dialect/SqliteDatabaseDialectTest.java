@@ -189,7 +189,7 @@ public class SqliteDatabaseDialectTest extends BaseDialectTest<SqliteDatabaseDia
   public void shouldBuildUpsertStatement() {
     String expected = "INSERT OR REPLACE INTO `myTable`(`id1`,`id2`,`columnA`,`columnB`," +
                       "`columnC`,`columnD`) VALUES(?,?,?,?,?,?)";
-    String sql = dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD);
+    String sql = dialect.buildUpsertQueryStatement(tableId, pkColumns, columnsAtoD, fieldsOptional);
     assertEquals(expected, sql);
   }
 
@@ -240,7 +240,8 @@ public class SqliteDatabaseDialectTest extends BaseDialectTest<SqliteDatabaseDia
         dialect.buildUpsertQueryStatement(
             book,
             columns(book, "author", "title"),
-            columns(book, "ISBN", "year", "pages")
+            columns(book, "ISBN", "year", "pages"),
+            fieldsOptional
         )
     );
 
@@ -251,7 +252,8 @@ public class SqliteDatabaseDialectTest extends BaseDialectTest<SqliteDatabaseDia
         dialect.buildUpsertQueryStatement(
             book,
             columns(book, "author", "title"),
-            columns(book, "ISBN", "year", "pages")
+            columns(book, "ISBN", "year", "pages"),
+            fieldsOptional
         )
     );
   }

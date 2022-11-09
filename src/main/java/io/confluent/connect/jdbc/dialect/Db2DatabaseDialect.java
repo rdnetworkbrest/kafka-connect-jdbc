@@ -22,6 +22,7 @@ import org.apache.kafka.connect.data.Time;
 import org.apache.kafka.connect.data.Timestamp;
 
 import java.util.Collection;
+import java.util.Set;
 
 import io.confluent.connect.jdbc.dialect.DatabaseDialectProvider.SubprotocolBasedProvider;
 import io.confluent.connect.jdbc.sink.metadata.SinkRecordField;
@@ -113,7 +114,8 @@ public class Db2DatabaseDialect extends GenericDatabaseDialect {
   public String buildUpsertQueryStatement(
       final TableId table,
       Collection<ColumnId> keyColumns,
-      Collection<ColumnId> nonKeyColumns
+      Collection<ColumnId> nonKeyColumns,
+      Set<String> fieldsOptional
   ) {
     // http://lpar.ath0.com/2013/08/12/upsert-in-db2/
     final Transform<ColumnId> transform = (builder, col) -> {

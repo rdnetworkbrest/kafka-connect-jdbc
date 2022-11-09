@@ -1588,7 +1588,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
   public String buildUpsertQueryStatement(
       TableId table,
       Collection<ColumnId> keyColumns,
-      Collection<ColumnId> nonKeyColumns
+      Collection<ColumnId> nonKeyColumns,
+      Set<String> fieldsOptional
   ) {
     throw new UnsupportedOperationException();
   }

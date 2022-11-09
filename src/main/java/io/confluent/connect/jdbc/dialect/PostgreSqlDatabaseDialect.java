@@ -387,18 +387,28 @@ public class PostgreSqlDatabaseDialect extends GenericDatabaseDialect {
       TableId table,
       Collection<ColumnId> keyColumns,
       Collection<ColumnId> nonKeyColumns,
-      TableDefinition definition
+      TableDefinition definition,
+      Set<String> fieldsOptional
   ) {
     final Transform<ColumnId> transform = (builder, col) -> {
-      builder.appendColumnName(col.name())
-             .append("=EXCLUDED.")
-             .appendColumnName(col.name());
+      if (fieldsOptional.contains(col.name())) {
+        builder.appendColumnName(col.name())
+            .append("=coalesce(EXCLUDED.")
+            .appendColumnName(col.name())
+            .append(", tab.")
+            .appendColumnName(col.name())
+            .append(")");
+      } else {
+        builder.appendColumnName(col.name())
+          .append("=EXCLUDED.")
+          .appendColumnName(col.name());
+      }
     };
 
     ExpressionBuilder builder = expressionBuilder();
     builder.append("INSERT INTO ");
     builder.append(table);
-    builder.append(" (");
+    builder.append(" AS tab (");
     builder.appendList()
            .delimitedBy(",")
            .transformedBy(ExpressionBuilder.columnNames())

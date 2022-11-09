@@ -221,6 +221,13 @@ public class JdbcSinkConfig extends AbstractConfig {
       + " while this configuration is applicable for the other columns.";
   private static final String FIELDS_WHITELIST_DISPLAY = "Fields Whitelist";
 
+  public static final String FIELDS_OPTIONAL = "fields.optional";
+  private static final String FIELDS_OPTIONAL_DEFAULT = "";
+  private static final String FIELDS_OPTIONAL_DOC = 
+      "List of comma-separated record value field names. If empty, all fields from the record "
+      + "value are updated, otherwise used to ignore fields if null in payload";
+  private static final String FIELDS_OPTIONAL_DISPLAY = "Fields Optional";
+
   private static final ConfigDef.Range NON_NEGATIVE_INT_VALIDATOR = ConfigDef.Range.atLeast(0);
 
   private static final String CONNECTION_GROUP = "Connection";
@@ -436,7 +443,19 @@ public class JdbcSinkConfig extends AbstractConfig {
             4,
             ConfigDef.Width.LONG,
             FIELDS_WHITELIST_DISPLAY
-        ).define(
+        )
+        .define(
+            FIELDS_OPTIONAL,
+            ConfigDef.Type.LIST,
+            FIELDS_OPTIONAL_DEFAULT,
+            ConfigDef.Importance.LOW,
+            FIELDS_OPTIONAL_DOC,
+            DATAMAPPING_GROUP,
+            4,
+            ConfigDef.Width.LONG,
+            FIELDS_OPTIONAL_DISPLAY
+        )
+        .define(
           DB_TIMEZONE_CONFIG,
           ConfigDef.Type.STRING,
           DB_TIMEZONE_DEFAULT,
@@ -535,6 +554,7 @@ public class JdbcSinkConfig extends AbstractConfig {
   public final PrimaryKeyMode pkMode;
   public final List<String> pkFields;
   public final Set<String> fieldsWhitelist;
+  public final Set<String> fieldsOptional;
   public final String dialectName;
   public final TimeZone timeZone;
   public final EnumSet<TableType> tableTypes;
@@ -560,6 +580,7 @@ public class JdbcSinkConfig extends AbstractConfig {
     pkFields = getList(PK_FIELDS);
     dialectName = getString(DIALECT_NAME_CONFIG);
     fieldsWhitelist = new HashSet<>(getList(FIELDS_WHITELIST));
+    fieldsOptional = new HashSet<>(getList(FIELDS_OPTIONAL));
     String dbTimeZone = getString(DB_TIMEZONE_CONFIG);
     timeZone = TimeZone.getTimeZone(ZoneId.of(dbTimeZone));
 
