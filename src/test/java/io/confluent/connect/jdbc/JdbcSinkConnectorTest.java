@@ -25,38 +25,11 @@ import org.apache.kafka.common.config.Config;
 
 import static io.confluent.connect.jdbc.sink.JdbcSinkConfig.PK_MODE;
 import static java.util.Collections.EMPTY_LIST;
-import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
 import org.junit.Test;
 
 public class JdbcSinkConnectorTest {
-
-  @Test
-  public void testValidationWhenDeleteEnabled() {
-
-    JdbcSinkConnector connector = new JdbcSinkConnector();
-
-    Map<String, String> connConfig = new HashMap<>();
-    connConfig.put("connector.class", "io.confluent.connect.jdbc.JdbcSinkConnector");
-    connConfig.put("delete.enabled", "true");
-
-    connConfig.put("pk.mode", "record_key");
-    assertEquals("'pk.mode must be 'RECORD_KEY/record_key' when 'delete.enabled' == true",
-        EMPTY_LIST, configErrors(connector.validate(connConfig), PK_MODE));
-
-    connConfig.put("pk.mode", "RECORD_KEY");
-    assertEquals("pk.mode must be 'RECORD_KEY/record_key' when 'delete.enabled' == true",
-        EMPTY_LIST, configErrors(connector.validate(connConfig), PK_MODE));
-
-    connConfig.put("pk.mode", "none");
-
-    final String conflictMsg = "Deletes are only supported for pk.mode record_key";
-
-    assertEquals("'record_key' is the only valid mode when 'delete.enabled' == true",
-        singletonList(conflictMsg),
-        configErrors(connector.validate(connConfig), PK_MODE));
-  }
 
   @Test
   public void testValidationWhenDeleteNotEnabled() {

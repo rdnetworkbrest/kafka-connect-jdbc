@@ -583,11 +583,6 @@ public class JdbcSinkConfig extends AbstractConfig {
     fieldsOptional = new HashSet<>(getList(FIELDS_OPTIONAL));
     String dbTimeZone = getString(DB_TIMEZONE_CONFIG);
     timeZone = TimeZone.getTimeZone(ZoneId.of(dbTimeZone));
-
-    if (deleteEnabled && pkMode != PrimaryKeyMode.RECORD_KEY) {
-      throw new ConfigException(
-          "Primary key mode must be 'record_key' when delete support is enabled");
-    }
     tableTypes = TableType.parse(getList(TABLE_TYPES_CONFIG));
   }
 

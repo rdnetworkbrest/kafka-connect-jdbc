@@ -15,7 +15,6 @@
 
 package io.confluent.connect.jdbc.sink;
 
-import org.apache.kafka.common.config.ConfigException;
 import io.confluent.connect.jdbc.util.ColumnDefinition;
 import io.confluent.connect.jdbc.util.TableDefinition;
 
@@ -119,14 +118,6 @@ public class BufferedRecordsTest {
     assertEquals(Collections.singletonList(recordB), buffer.add(recordA));
 
     assertEquals(Collections.singletonList(recordA), buffer.flush());
-  }
-
-  @Test(expected = ConfigException.class)
-  public void configParsingFailsIfDeleteWithWrongPKMode() {
-    props.put("delete.enabled", true);
-    props.put("insert.mode", "upsert");
-    props.put("pk.mode", "kafka"); // wrong pk mode for deletes
-    new JdbcSinkConfig(props);
   }
 
   @Test
@@ -650,40 +641,6 @@ public class BufferedRecordsTest {
     assertInvalidRecord(false, true, false, false, "with a non-null Struct value and non-null Struct schema");
     assertInvalidRecord(true, false, false, false, "with a non-null Struct value and non-null Struct schema");
     assertInvalidRecord(false, false, false, false, "with a non-null Struct value and non-null Struct schema");
-  }
-
-  @Test
-  public void testAddRecordDeleteEnabledAndNonePkMode() throws SQLException {
-    props.put("delete.enabled", true);
-    props.put("pk.mode", "none");
-    ConfigException e = assertThrows(ConfigException.class, () -> new JdbcSinkConfig(props));
-    assertEquals(
-        "Primary key mode must be 'record_key' when delete support is enabled",
-        e.getMessage()
-    );
-  }
-
-  @Test
-  public void testAddRecordDeleteEnabledAndRecordValuePkMode() throws SQLException {
-    props.put("delete.enabled", true);
-    props.put("pk.mode", "record_value");
-    props.put("pk.fields", "name");
-    ConfigException e = assertThrows(ConfigException.class, () -> new JdbcSinkConfig(props));
-    assertEquals(
-        "Primary key mode must be 'record_key' when delete support is enabled",
-        e.getMessage()
-    );
-  }
-
-  @Test
-  public void testAddRecordDeleteEnabledAndKafkaPkMode() throws SQLException {
-    props.put("delete.enabled", true);
-    props.put("pk.mode", "kafka");
-    ConfigException e = assertThrows(ConfigException.class, () -> new JdbcSinkConfig(props));
-    assertEquals(
-        "Primary key mode must be 'record_key' when delete support is enabled",
-        e.getMessage()
-    );
   }
 
   @Test

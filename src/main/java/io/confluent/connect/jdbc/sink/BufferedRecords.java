@@ -37,6 +37,7 @@ import io.confluent.connect.jdbc.dialect.DatabaseDialect.StatementBinder;
 import io.confluent.connect.jdbc.sink.metadata.FieldsMetadata;
 import io.confluent.connect.jdbc.sink.metadata.SchemaPair;
 import io.confluent.connect.jdbc.util.ColumnId;
+import io.confluent.connect.jdbc.util.RecordUtil;
 import io.confluent.connect.jdbc.util.TableId;
 
 import static java.util.Objects.isNull;
@@ -177,7 +178,8 @@ public class BufferedRecords {
     }
     log.debug("Flushing {} buffered records", records.size());
     for (SinkRecord record : records) {
-      if (isNull(record.value()) && nonNull(deleteStatementBinder)) {
+      if (nonNull(deleteStatementBinder)
+          && RecordUtil.isRecordToDelete(record, config.pkMode)) {
         deleteStatementBinder.bindRecord(record);
       } else {
         updateStatementBinder.bindRecord(record);
@@ -279,6 +281,7 @@ public class BufferedRecords {
     if (config.deleteEnabled) {
       switch (config.pkMode) {
         case RECORD_KEY:
+        case RECORD_VALUE:
           if (fieldsMetadata.keyFieldNames.isEmpty()) {
             throw new ConnectException("Require primary keys to support delete");
           }
@@ -297,7 +300,9 @@ public class BufferedRecords {
           break;
 
         default:
-          throw new ConnectException("Deletes are only supported for pk.mode record_key");
+          throw new ConnectException(
+            "Deletes are only supported for pk.mode record_key and record_value"
+          );
       }
     }
     return sql;
