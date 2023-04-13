@@ -18,6 +18,8 @@ package io.confluent.connect.jdbc.sink;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.header.Header;
+import org.apache.kafka.connect.header.Headers;
 import org.apache.kafka.connect.sink.SinkRecord;
 
 import java.sql.Connection;
@@ -119,6 +121,39 @@ public class JdbcDbWriter {
     //throw new DataException(lst.toString() + " are not a valid field name");
   }
 
+  String findSchemaHeader(Headers headers, List<String> lst) {
+    for (String fieldName : lst) {
+      Header header = headers.lastWithName(fieldName)  ;
+      if (header != null) {
+        String result = (String) header.value() ;
+        return result ;
+      }
+    }
+    return null ;
+  }
+
+  String findTableName(String tableName, SinkRecord record) {
+    if (enableJdbcSchema) {
+      List<String> schemaRecordValueFields = config.schemaRecordValueFields;
+      List<String> schemaRecordHeaders = config.schemaRecordHeaders;
+      String schema = null ;
+      Object value = record.value();
+      Headers headers = record.headers();
+      if (value != null && value instanceof Struct && !schemaRecordValueFields.isEmpty()) {
+        schema = findSchemaValue((Struct) value, schemaRecordValueFields);
+      }
+      if (schema == null && !schemaRecordHeaders.isEmpty()) {
+        if (headers != null && !headers.isEmpty()) {
+          schema = findSchemaHeader(headers, schemaRecordHeaders);
+        }
+      }
+      if (schema != null) {
+        tableName = "\"" + schema + "\"." + tableName;
+      }
+    }
+    return tableName ;
+  }
+
   TableId destinationTable(String topic, SinkRecord record) {
     //    final String tableName = config.tableNameFormat.replace("${topic}", topic);
     String tableName = config.tableNameFormat.replace("${topic}", topic);
@@ -143,16 +178,7 @@ public class JdbcDbWriter {
       }
     }
      */
-    if (enableJdbcSchema) {
-      List<String> schemaRecordValueFields = config.schemaRecordValueFields;
-      Object value = record.value();
-      if (value != null && value instanceof Struct && !schemaRecordValueFields.isEmpty()) {
-        String schema = findSchemaValue((Struct) value, schemaRecordValueFields);
-        if (schema != null) {
-          tableName = "\"" + schema + "\"." + tableName;
-        }
-      }
-    }
+    tableName = findTableName(tableName,record) ;
     /*
     if (schemaRecordValue != null && !"None".equals(schemaRecordValue)) {
       Object value = record.value();

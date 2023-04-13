@@ -123,6 +123,16 @@ public class JdbcSinkConfig extends AbstractConfig {
   private static final String SCHEMA_RECORD_VALUE_FIELDS_DISPLAY = "Schema from record value"
           + " fields";
 
+  public static final String SCHEMA_RECORD_HEADERS = "schema.record.headers";
+  private static final String SCHEMA_RECORD_HEADERS_DEFAULT = "";
+  private static final String SCHEMA_RECORD_HEADERS_DOC =
+          "List of comma-separated string for the destination schema,"
+                  + " which is mapped to record header.\n"
+                  + "Will return value from first header  found.\n"
+                  + "For example, `mapping_organization_id` \n"
+                  + " `` for no schema from record header" ;
+  private static final String SCHEMA_RECORD_HEADERS_DISPLAY = "Schema from record headers" ;
+
 
   public static final String MAX_RETRIES = "max.retries";
   private static final int MAX_RETRIES_DEFAULT = 10;
@@ -477,6 +487,17 @@ public class JdbcSinkConfig extends AbstractConfig {
                   6,
                   ConfigDef.Width.LONG,
                   SCHEMA_RECORD_VALUE_FIELDS_DISPLAY
+          ).define(
+                  SCHEMA_RECORD_HEADERS,
+                  ConfigDef.Type.LIST,
+                  SCHEMA_RECORD_HEADERS_DEFAULT,
+                  //new ConfigDef.NonEmptyString(),
+                  ConfigDef.Importance.MEDIUM,
+                  SCHEMA_RECORD_HEADERS_DOC,
+                  DATAMAPPING_GROUP,
+                  7,
+                  ConfigDef.Width.LONG,
+                  SCHEMA_RECORD_HEADERS_DISPLAY
           )
         // DDL
         .define(
@@ -544,6 +565,7 @@ public class JdbcSinkConfig extends AbstractConfig {
   public final long connectionBackoffMs;
   public final String tableNameFormat;
   public final List<String> schemaRecordValueFields;
+  public final List<String> schemaRecordHeaders;
   public final int batchSize;
   public final boolean deleteEnabled;
   public final int maxRetries;
@@ -569,6 +591,7 @@ public class JdbcSinkConfig extends AbstractConfig {
     connectionBackoffMs = getLong(CONNECTION_BACKOFF);
     tableNameFormat = getString(TABLE_NAME_FORMAT).trim();
     schemaRecordValueFields = getList(SCHEMA_RECORD_VALUE_FIELDS);
+    schemaRecordHeaders = getList(SCHEMA_RECORD_HEADERS);
     batchSize = getInt(BATCH_SIZE);
     deleteEnabled = getBoolean(DELETE_ENABLED);
     maxRetries = getInt(MAX_RETRIES);
