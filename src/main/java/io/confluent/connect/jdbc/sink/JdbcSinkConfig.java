@@ -639,10 +639,6 @@ public class JdbcSinkConfig extends AbstractConfig {
     timeZone = TimeZone.getTimeZone(ZoneId.of(dbTimeZone));
     useHoldlockInMerge = getBoolean(MSSQL_USE_MERGE_HOLDLOCK);
     trimSensitiveLogsEnabled = getBoolean(TRIM_SENSITIVE_LOG_ENABLED);
-    if (deleteEnabled && pkMode != PrimaryKeyMode.RECORD_KEY) {
-      throw new ConfigException(
-          "Primary key mode must be 'record_key' when delete support is enabled");
-    }
     tableTypes = TableType.parse(getList(TABLE_TYPES_CONFIG));
   }
 
