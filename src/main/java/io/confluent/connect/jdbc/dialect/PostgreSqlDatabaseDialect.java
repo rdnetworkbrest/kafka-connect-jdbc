@@ -391,7 +391,8 @@ public class PostgreSqlDatabaseDialect extends GenericDatabaseDialect {
       Set<String> fieldsOptional
   ) {
     final Transform<ColumnId> transform = (builder, col) -> {
-      if (fieldsOptional.contains(col.name())) {
+      if (!fieldsOptional.isEmpty()
+              && (fieldsOptional.contains("*") || fieldsOptional.contains(col.name()))) {
         builder.appendColumnName(col.name())
             .append("=coalesce(EXCLUDED.")
             .appendColumnName(col.name())

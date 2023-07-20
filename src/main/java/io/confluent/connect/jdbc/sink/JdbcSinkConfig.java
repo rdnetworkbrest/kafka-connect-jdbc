@@ -235,7 +235,8 @@ public class JdbcSinkConfig extends AbstractConfig {
   private static final String FIELDS_OPTIONAL_DEFAULT = "";
   private static final String FIELDS_OPTIONAL_DOC = 
       "List of comma-separated record value field names. If empty, all fields from the record "
-      + "value are updated, otherwise used to ignore fields if null in payload";
+      + "value are updated, otherwise used to ignore fields if null in payload. \n"
+              + "* means all fields are optionals.";
   private static final String FIELDS_OPTIONAL_DISPLAY = "Fields Optional";
 
   private static final ConfigDef.Range NON_NEGATIVE_INT_VALIDATOR = ConfigDef.Range.atLeast(0);
