@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import io.confluent.connect.jdbc.dialect.DatabaseDialect;
 import io.confluent.connect.jdbc.util.CachedConnectionProvider;
@@ -72,10 +73,12 @@ public class JdbcDbWriter {
   void write(final Collection<SinkRecord> records)
       throws SQLException, TableAlterOrCreateException {
     final Connection connection = cachedConnectionProvider.getConnection();
+    String schemaName = getSchemaSafe(connection).orElse(null);
+    String catalogName = getCatalogSafe(connection).orElse(null);
     try {
       final Map<TableId, BufferedRecords> bufferByTable = new HashMap<>();
       for (SinkRecord record : records) {
-        final TableId tableId = destinationTable(record.topic(), record);
+        final TableId tableId = destinationTable(record.topic(), record, schemaName, catalogName);
         BufferedRecords buffer = bufferByTable.get(tableId);
         if (buffer == null) {
           buffer = new BufferedRecords(config, tableId, dbDialect, dbStructure, connection);
@@ -90,53 +93,56 @@ public class JdbcDbWriter {
         buffer.flush();
         buffer.close();
       }
+      log.trace("Committing transaction");
       connection.commit();
     } catch (SQLException | TableAlterOrCreateException e) {
+      log.error("Error during write operation. Attempting rollback.", e);
       try {
         connection.rollback();
+        log.info("Successfully rolled back transaction");
       } catch (SQLException sqle) {
+        log.error("Failed to rollback transaction", sqle);
         e.addSuppressed(sqle);
       } finally {
         throw e;
       }
     }
+    log.info("Completed write operation for {} records to the database", records.size());
   }
 
   void closeQuietly() {
     cachedConnectionProvider.close();
   }
 
-  //String patternRecordExpr = ".*(\\$\\{record\\.(value|key)\\.(.*)\\}).*";
-  //Pattern patternRecord = Pattern.compile(patternRecordExpr);
 
   String findSchemaValue(Struct value, List<String> lst) {
     for (String fieldName : lst) {
-      Field field = value.schema().field(fieldName)  ;
+      Field field = value.schema().field(fieldName);
       if (field != null) {
-        String result = (String) value.get(field) ;
-        return result ;
+        String result = (String) value.get(field);
+        return result;
       }
     }
-    return null ;
+    return null;
     //throw new DataException(lst.toString() + " are not a valid field name");
   }
 
   String findSchemaHeader(Headers headers, List<String> lst) {
     for (String fieldName : lst) {
-      Header header = headers.lastWithName(fieldName)  ;
+      Header header = headers.lastWithName(fieldName);
       if (header != null) {
-        String result = (String) header.value() ;
-        return result ;
+        String result = (String) header.value();
+        return result;
       }
     }
-    return null ;
+    return null;
   }
 
   String findTableName(String tableName, SinkRecord record) {
     if (enableJdbcSchema) {
       List<String> schemaRecordValueFields = config.schemaRecordValueFields;
       List<String> schemaRecordHeaders = config.schemaRecordHeaders;
-      String schema = null ;
+      String schema = null;
       Object value = record.value();
       Headers headers = record.headers();
       if (value != null && value instanceof Struct && !schemaRecordValueFields.isEmpty()) {
@@ -151,53 +157,44 @@ public class JdbcDbWriter {
         tableName = "\"" + schema + "\"." + tableName;
       }
     }
-    return tableName ;
+    return tableName;
   }
 
-  TableId destinationTable(String topic, SinkRecord record) {
-    //    final String tableName = config.tableNameFormat.replace("${topic}", topic);
+
+  TableId destinationTable(String topic, SinkRecord record, String schemaName, String catalogName) {
     String tableName = config.tableNameFormat.replace("${topic}", topic);
-    /*
-    Matcher matcher = patternRecord.matcher(tableName);
-    if (matcher.find()) {
-      //String all =  matcher.group(0) ;
-      String allExpr =  matcher.group(1) ;
-      String typeExpr =  matcher.group(2) ;
-      String selectExpr =  matcher.group(3) ;
-      switch (typeExpr) {
-        case "value" :
-          Object value = record.value();
-          if (value != null && value instanceof Struct) {
-            String schema = (String) ((Struct) value).get(selectExpr);
-            if (schema != null) {
-              tableName = tableName.replace(allExpr,schema) ;
-            }
-          }
-          break ;
-        default :
-      }
-    }
-     */
-    tableName = findTableName(tableName,record) ;
-    /*
-    if (schemaRecordValue != null && !"None".equals(schemaRecordValue)) {
-      Object value = record.value();
-      if (value != null && value instanceof Struct) {
-        String schema = (String) ((Struct) value).get(schemaRecordValue);
-        if (schema != null) {
-          tableName = "\"" + schema + "\"." + tableName;
-        }
-      }
-    }
-    */
+    tableName = findTableName(tableName, record);
     if (tableName.isEmpty()) {
       throw new ConnectException(String.format(
-              "Destination table name for topic '%s' is empty using the format string '%s'",
+        "Destination table name for topic '%s' is empty using the format string '%s'",
               topic,
-              config.tableNameFormat
-      ));
+              config.tableNameFormat));
     }
-    return dbDialect.parseTableIdentifier(tableName);
+    TableId parsedTableId = dbDialect.parseTableIdentifier(tableName);
+    String finalCatalogName =
+            (parsedTableId.catalogName() != null) ? parsedTableId.catalogName() : catalogName;
+    String finalSchemaName =
+            (parsedTableId.schemaName() != null) ? parsedTableId.schemaName() : schemaName;
+
+    return new TableId(finalCatalogName, finalSchemaName, parsedTableId.tableName());
+  }
+
+  private Optional<String> getSchemaSafe(Connection connection) {
+    try {
+      return Optional.ofNullable(connection.getSchema());
+    } catch (AbstractMethodError | SQLException e) {
+      log.warn("Failed to get schema: {}", e.getMessage());
+      return Optional.empty();
+    }
+  }
+
+  private Optional<String> getCatalogSafe(Connection connection) {
+    try {
+      return Optional.ofNullable(connection.getCatalog());
+    } catch (AbstractMethodError | SQLException e) {
+      log.warn("Failed to get catalog: {}", e.getMessage());
+      return Optional.empty();
+    }
   }
 
 }
