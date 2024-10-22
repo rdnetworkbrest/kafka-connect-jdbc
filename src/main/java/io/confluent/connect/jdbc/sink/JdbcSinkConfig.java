@@ -522,7 +522,7 @@ public class JdbcSinkConfig extends AbstractConfig {
             ConfigDef.Importance.LOW,
             FIELDS_OPTIONAL_DOC,
             DATAMAPPING_GROUP,
-            4,
+            5,
             ConfigDef.Width.LONG,
             FIELDS_OPTIONAL_DISPLAY
         )
@@ -546,7 +546,7 @@ public class JdbcSinkConfig extends AbstractConfig {
                   ConfigDef.Importance.MEDIUM,
                   SCHEMA_RECORD_VALUE_FIELDS_DOC,
                   DATAMAPPING_GROUP,
-                  6,
+                  7,
                   ConfigDef.Width.LONG,
                   SCHEMA_RECORD_VALUE_FIELDS_DISPLAY
           ).define(
@@ -557,7 +557,7 @@ public class JdbcSinkConfig extends AbstractConfig {
                   ConfigDef.Importance.MEDIUM,
                   SCHEMA_RECORD_HEADERS_DOC,
                   DATAMAPPING_GROUP,
-                  7,
+                  8,
                   ConfigDef.Width.LONG,
                   SCHEMA_RECORD_HEADERS_DISPLAY
           )
