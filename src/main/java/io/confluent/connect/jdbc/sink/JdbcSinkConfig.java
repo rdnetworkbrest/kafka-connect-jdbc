@@ -30,16 +30,7 @@ import java.util.stream.Collectors;
 
 import io.confluent.connect.jdbc.source.JdbcSourceConnectorConfig;
 
-import io.confluent.connect.jdbc.util.ConfigUtils;
-import io.confluent.connect.jdbc.util.DatabaseDialectRecommender;
-import io.confluent.connect.jdbc.util.DeleteEnabledRecommender;
-import io.confluent.connect.jdbc.util.EnumRecommender;
-import io.confluent.connect.jdbc.util.JdbcCredentialsProvider;
-import io.confluent.connect.jdbc.util.JdbcCredentialsProviderValidator;
-import io.confluent.connect.jdbc.util.PrimaryKeyModeRecommender;
-import io.confluent.connect.jdbc.util.QuoteMethod;
-import io.confluent.connect.jdbc.util.StringUtils;
-import io.confluent.connect.jdbc.util.TableType;
+import io.confluent.connect.jdbc.util.*;
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -526,41 +517,53 @@ public class JdbcSinkConfig extends AbstractConfig {
             ConfigDef.Width.LONG,
             FIELDS_OPTIONAL_DISPLAY
         )
-          .define(
-                  DATE_TIMEZONE_CONFIG,
-                  ConfigDef.Type.STRING,
-                  DATE_TIMEZONE_DEFAULT,
-                  EnumValidator.in(DateTimezone.values()),
-                  ConfigDef.Importance.LOW,
-                  DATE_TIMEZONE_CONFIG_DOC,
-                  DATAMAPPING_GROUP,
-                  6,
-                  ConfigDef.Width.MEDIUM,
-                  DATE_TIMEZONE_CONFIG_DISPLAY,
-                  DATE_TIMEZONE_RECOMMENDER
-          ).define(
-                  SCHEMA_RECORD_VALUE_FIELDS,
-                  ConfigDef.Type.LIST,
-                  SCHEMA_RECORD_VALUE_FIELDS_DEFAULT,
-                  //new ConfigDef.NonEmptyString(),
-                  ConfigDef.Importance.MEDIUM,
-                  SCHEMA_RECORD_VALUE_FIELDS_DOC,
-                  DATAMAPPING_GROUP,
-                  7,
-                  ConfigDef.Width.LONG,
-                  SCHEMA_RECORD_VALUE_FIELDS_DISPLAY
-          ).define(
-                  SCHEMA_RECORD_HEADERS,
-                  ConfigDef.Type.LIST,
-                  SCHEMA_RECORD_HEADERS_DEFAULT,
-                  //new ConfigDef.NonEmptyString(),
-                  ConfigDef.Importance.MEDIUM,
-                  SCHEMA_RECORD_HEADERS_DOC,
-                  DATAMAPPING_GROUP,
-                  8,
-                  ConfigDef.Width.LONG,
-                  SCHEMA_RECORD_HEADERS_DISPLAY
-          )
+        .define(
+            DB_TIMEZONE_CONFIG,
+            ConfigDef.Type.STRING,
+            DB_TIMEZONE_DEFAULT,
+            TimeZoneValidator.INSTANCE,
+            ConfigDef.Importance.MEDIUM,
+            DB_TIMEZONE_CONFIG_DOC,
+            DATAMAPPING_GROUP,
+            6,
+            ConfigDef.Width.MEDIUM,
+            DB_TIMEZONE_CONFIG_DISPLAY
+        )
+        .define(
+            DATE_TIMEZONE_CONFIG,
+            ConfigDef.Type.STRING,
+            DATE_TIMEZONE_DEFAULT,
+            EnumValidator.in(DateTimezone.values()),
+            ConfigDef.Importance.LOW,
+            DATE_TIMEZONE_CONFIG_DOC,
+            DATAMAPPING_GROUP,
+            7,
+            ConfigDef.Width.MEDIUM,
+            DATE_TIMEZONE_CONFIG_DISPLAY,
+            DATE_TIMEZONE_RECOMMENDER
+        ).define(
+            SCHEMA_RECORD_VALUE_FIELDS,
+            ConfigDef.Type.LIST,
+            SCHEMA_RECORD_VALUE_FIELDS_DEFAULT,
+            //new ConfigDef.NonEmptyString(),
+            ConfigDef.Importance.MEDIUM,
+            SCHEMA_RECORD_VALUE_FIELDS_DOC,
+            DATAMAPPING_GROUP,
+            8,
+            ConfigDef.Width.LONG,
+            SCHEMA_RECORD_VALUE_FIELDS_DISPLAY
+        ).define(
+            SCHEMA_RECORD_HEADERS,
+            ConfigDef.Type.LIST,
+            SCHEMA_RECORD_HEADERS_DEFAULT,
+            //new ConfigDef.NonEmptyString(),
+            ConfigDef.Importance.MEDIUM,
+            SCHEMA_RECORD_HEADERS_DOC,
+            DATAMAPPING_GROUP,
+            9,
+            ConfigDef.Width.LONG,
+            SCHEMA_RECORD_HEADERS_DISPLAY
+        )
         // DDL
         .define(
             AUTO_CREATE,
