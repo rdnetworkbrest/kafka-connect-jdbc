@@ -15,8 +15,8 @@
 
 package io.confluent.connect.jdbc.dialect;
 
+import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.util.TimeZone;
 
 import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.config.AbstractConfig;
@@ -88,6 +88,7 @@ import io.confluent.connect.jdbc.util.ColumnDefinition.Nullability;
 import io.confluent.connect.jdbc.util.ColumnId;
 import io.confluent.connect.jdbc.util.DateTimeUtils;
 import io.confluent.connect.jdbc.util.ExpressionBuilder;
+import io.confluent.connect.jdbc.util.DateCalendarSystem;
 import io.confluent.connect.jdbc.util.ExpressionBuilder.Transform;
 import io.confluent.connect.jdbc.util.IdentifierRules;
 import io.confluent.connect.jdbc.util.JdbcCredentials;
@@ -98,6 +99,9 @@ import io.confluent.connect.jdbc.util.StringUtils;
 import io.confluent.connect.jdbc.util.TableDefinition;
 import io.confluent.connect.jdbc.util.TableId;
 import io.confluent.connect.jdbc.util.TableType;
+
+import static io.confluent.connect.jdbc.sink.JdbcSinkConfig.TimestampPrecisionMode.MICROSECONDS;
+import static io.confluent.connect.jdbc.sink.JdbcSinkConfig.TimestampPrecisionMode.NANOSECONDS;
 
 /**
  * A {@link DatabaseDialect} implementation that provides functionality based upon JDBC and SQL.
@@ -161,9 +165,12 @@ public class GenericDatabaseDialect implements DatabaseDialect {
   private final Queue<Connection> connections = new ConcurrentLinkedQueue<>();
   private volatile JdbcDriverInfo jdbcDriverInfo;
   private final int batchMaxRows;
-  private final TimeZone timeZone;
-  private final TimeZone dateTimeZone;
+  private final ZoneId zoneId;
+  private final JdbcSinkConfig.TimestampPrecisionMode timestampPrecisionMode;
+  private final Set<String> timestampFieldsList;
+  private final ZoneId dateTimeZoneId;
   private final JdbcSourceConnectorConfig.TimestampGranularity tsGranularity;
+  private final DateCalendarSystem dateCalendarSystem;
 
   /**
    * Create a new dialect instance with the given connector configuration.
@@ -199,6 +206,9 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       quoteSqlIdentifiers = QuoteMethod.get(
           config.getString(JdbcSinkConfig.QUOTE_SQL_IDENTIFIERS_CONFIG)
       );
+      timestampPrecisionMode = sinkConfig.timestampPrecisionMode;
+      timestampFieldsList = sinkConfig.timestampFieldsList;
+
     } else {
       catalogPattern = config.getString(JdbcSourceTaskConfig.CATALOG_PATTERN_CONFIG);
       schemaPattern = config.getString(JdbcSourceTaskConfig.SCHEMA_PATTERN_CONFIG);
@@ -206,6 +216,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       quoteSqlIdentifiers = QuoteMethod.get(
           config.getString(JdbcSourceConnectorConfig.QUOTE_SQL_IDENTIFIERS_CONFIG)
       );
+      timestampPrecisionMode = null;
+      timestampFieldsList = null;
     }
     if (config instanceof JdbcSourceConnectorConfig) {
       mapNumerics = ((JdbcSourceConnectorConfig)config).numericMapping();
@@ -221,17 +233,19 @@ public class GenericDatabaseDialect implements DatabaseDialect {
     // behaviour without potentially breaking existing customer's pipeline. So this change is
     // controlled using the db.timezone.date config in sink connector.
     if (config instanceof JdbcSourceConnectorConfig) {
-      timeZone = ((JdbcSourceConnectorConfig) config).timeZone();
-      dateTimeZone = TimeZone.getTimeZone(ZoneOffset.UTC);
+      zoneId = ((JdbcSourceConnectorConfig) config).zoneId();
+      dateTimeZoneId = ZoneOffset.UTC;
     } else {
-      timeZone = ((JdbcSinkConfig) config).timeZone;
-      dateTimeZone = ((JdbcSinkConfig) config).dateTimeZone;
+      zoneId = ((JdbcSinkConfig) config).zoneId;
+      dateTimeZoneId = ((JdbcSinkConfig) config).dateTimeZoneId;
     }
 
     if (config instanceof JdbcSourceConnectorConfig) {
       tsGranularity = TimestampGranularity.get((JdbcSourceConnectorConfig) config);
+      dateCalendarSystem = ((JdbcSourceConnectorConfig) config).getDateCalendarSystem();
     } else {
       tsGranularity = TimestampGranularity.CONNECT_LOGICAL;
+      dateCalendarSystem = ((JdbcSinkConfig) config).dateCalendarSystem;
     }
   }
 
@@ -240,8 +254,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
     return getClass().getSimpleName().replace("DatabaseDialect", "");
   }
 
-  protected TimeZone timeZone() {
-    return timeZone;
+  protected ZoneId zoneId() {
+    return zoneId;
   }
 
   @Override
@@ -1001,7 +1015,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       ColumnId incrementingColumn,
       List<ColumnId> timestampColumns
   ) {
-    return new TimestampIncrementingCriteria(incrementingColumn, timestampColumns, timeZone);
+    return new TimestampIncrementingCriteria(incrementingColumn, timestampColumns, zoneId,
+        ((JdbcSourceConnectorConfig) config).getDateCalendarSystem());
   }
 
   /**
@@ -1419,23 +1434,30 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       case Types.LONGVARBINARY: {
         return rs -> rs.getBytes(col);
       }
-
       // Date is day + month + year
       case Types.DATE: {
-        return rs -> rs.getDate(col,
-            DateTimeUtils.getTimeZoneCalendar(dateTimeZone));
+        return rs -> {
+          java.sql.Date sqlDate = rs.getDate(col, DateTimeUtils.getZoneIdCalendar(dateTimeZoneId));
+          if (dateCalendarSystem.isModern()) {
+            return DateTimeUtils.convertToModernDate(sqlDate, dateTimeZoneId);
+          }
+          return sqlDate;
+        };
       }
 
       // Time is a time of day -- hour, minute, seconds, nanoseconds
       case Types.TIME: {
-        return rs -> rs.getTime(col, DateTimeUtils.getTimeZoneCalendar(timeZone));
+        return rs -> rs.getTime(col, DateTimeUtils.getZoneIdCalendar(zoneId));
       }
 
       // Timestamp is a date + time
       case Types.TIMESTAMP: {
         return rs -> {
-          Timestamp timestamp = rs.getTimestamp(col, DateTimeUtils.getTimeZoneCalendar(timeZone));
-          return tsGranularity.fromTimestamp.apply(timestamp, timeZone);
+          Timestamp timestamp = rs.getTimestamp(col, DateTimeUtils.getZoneIdCalendar(zoneId));
+          if (dateCalendarSystem.isModern()) {
+            timestamp = DateTimeUtils.convertToModernTimestamp(timestamp, zoneId);
+          }
+          return tsGranularity.fromTimestamp.apply(timestamp, zoneId);
         };
       }
 
@@ -1636,7 +1658,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       PrimaryKeyMode pkMode,
       SchemaPair schemaPair,
       FieldsMetadata fieldsMetadata,
-      InsertMode insertMode
+      InsertMode insertMode,
+      boolean replaceNullWithDefault
   ) {
     return new PreparedStatementBinder(
         this,
@@ -1644,7 +1667,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
         pkMode,
         schemaPair,
         fieldsMetadata,
-        insertMode
+        insertMode,
+        replaceNullWithDefault
     );
   }
 
@@ -1656,6 +1680,29 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       Schema schema,
       Object value
   ) throws SQLException {
+    bindFieldInternal(statement, index, schema, value, null, null);
+  }
+
+  @Override
+  public void bindField(
+      PreparedStatement statement,
+      int index,
+      Schema schema,
+      Object value,
+      ColumnDefinition colDef,
+      String fieldName)
+      throws SQLException {
+    bindFieldInternal(statement, index, schema, value, colDef, fieldName);
+  }
+
+  private void bindFieldInternal(
+      PreparedStatement statement,
+      int index,
+      Schema schema,
+      Object value,
+      ColumnDefinition colDef,
+      String fieldName)
+      throws SQLException {
     if (value == null) {
       Integer type = getSqlTypeForSchema(schema);
       if (type != null) {
@@ -1666,7 +1713,7 @@ public class GenericDatabaseDialect implements DatabaseDialect {
     } else {
       boolean bound = maybeBindLogical(statement, index, schema, value);
       if (!bound) {
-        bound = maybeBindPrimitive(statement, index, schema, value);
+        bound = maybeBindPrimitive(statement, index, schema, value, fieldName);
       }
       if (!bound) {
         throw new ConnectException("Unsupported source data type: " + schema.type());
@@ -1690,7 +1737,8 @@ public class GenericDatabaseDialect implements DatabaseDialect {
       PreparedStatement statement,
       int index,
       Schema schema,
-      Object value
+      Object value,
+      String fieldName
   ) throws SQLException {
     switch (schema.type()) {
       case INT8:
@@ -1703,7 +1751,26 @@ public class GenericDatabaseDialect implements DatabaseDialect {
         statement.setInt(index, (Integer) value);
         break;
       case INT64:
-        statement.setLong(index, (Long) value);
+        if (config instanceof JdbcSinkConfig
+            && timestampFieldsList.contains(fieldName)) {
+          Timestamp ts;
+          switch (timestampPrecisionMode) {
+            case MICROSECONDS:
+              ts = DateTimeUtils.formatSinkMicrosTimestamp((Long) value);
+              break;
+            case NANOSECONDS:
+              ts = DateTimeUtils.formatSinkNanosTimestamp((Long) value);
+              break;
+            default:
+              throw new IllegalStateException("Unexpected precision: " + timestampPrecisionMode);
+          }
+          if (dateCalendarSystem.isModern()) {
+            ts = DateTimeUtils.convertToLegacyTimestamp(ts, zoneId);
+          }
+          statement.setTimestamp(index, ts, DateTimeUtils.getZoneIdCalendar(zoneId));
+        } else {
+          statement.setLong(index, (Long) value);
+        }
         break;
       case FLOAT32:
         statement.setFloat(index, (Float) value);
@@ -1715,7 +1782,18 @@ public class GenericDatabaseDialect implements DatabaseDialect {
         statement.setBoolean(index, (Boolean) value);
         break;
       case STRING:
-        statement.setString(index, (String) value);
+        if (config instanceof JdbcSinkConfig
+            && timestampFieldsList.contains(fieldName)) {
+          if (timestampPrecisionMode.equals(MICROSECONDS)) {
+            Timestamp ts = DateTimeUtils.formatSinkMicrosTimestamp((String) value);
+            statement.setTimestamp(index, ts, DateTimeUtils.getZoneIdCalendar(zoneId));
+          } else if (timestampPrecisionMode.equals(NANOSECONDS)) {
+            Timestamp ts = DateTimeUtils.formatSinkNanosTimestamp((String) value);
+            statement.setTimestamp(index, ts, DateTimeUtils.getZoneIdCalendar(zoneId));
+          }
+        } else {
+          statement.setString(index, (String) value);
+        }
         break;
       case BYTES:
         final byte[] bytes;
@@ -1743,10 +1821,14 @@ public class GenericDatabaseDialect implements DatabaseDialect {
     if (schema.name() != null) {
       switch (schema.name()) {
         case Date.LOGICAL_NAME:
+          java.sql.Date sqlDate = new java.sql.Date(((java.util.Date) value).getTime());
+          if (dateCalendarSystem.isModern()) {
+            sqlDate = DateTimeUtils.convertToLegacyDate((java.util.Date) value, dateTimeZoneId);
+          }
           statement.setDate(
               index,
-              new java.sql.Date(((java.util.Date) value).getTime()),
-              DateTimeUtils.getTimeZoneCalendar(dateTimeZone)
+              sqlDate,
+              DateTimeUtils.getZoneIdCalendar(dateTimeZoneId)
           );
           return true;
         case Decimal.LOGICAL_NAME:
@@ -1756,14 +1838,19 @@ public class GenericDatabaseDialect implements DatabaseDialect {
           statement.setTime(
               index,
               new java.sql.Time(((java.util.Date) value).getTime()),
-              DateTimeUtils.getTimeZoneCalendar(timeZone)
+              DateTimeUtils.getZoneIdCalendar(zoneId)
           );
           return true;
         case org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME:
+          java.sql.Timestamp sqlTimestamp =
+              new java.sql.Timestamp(((java.util.Date) value).getTime());
+          if (dateCalendarSystem.isModern()) {
+            sqlTimestamp = DateTimeUtils.convertToLegacyTimestamp((java.util.Date) value, zoneId);
+          }
           statement.setTimestamp(
               index,
-              new java.sql.Timestamp(((java.util.Date) value).getTime()),
-              DateTimeUtils.getTimeZoneCalendar(timeZone)
+              sqlTimestamp,
+              DateTimeUtils.getZoneIdCalendar(zoneId)
           );
           return true;
         default:
@@ -1912,14 +1999,14 @@ public class GenericDatabaseDialect implements DatabaseDialect {
           return;
         case Date.LOGICAL_NAME:
           builder.appendStringQuoted(
-              DateTimeUtils.formatDate((java.util.Date) value, dateTimeZone));
+              DateTimeUtils.formatDate((java.util.Date) value, dateTimeZoneId));
           return;
         case Time.LOGICAL_NAME:
-          builder.appendStringQuoted(DateTimeUtils.formatTime((java.util.Date) value, timeZone));
+          builder.appendStringQuoted(DateTimeUtils.formatTime((java.util.Date) value, zoneId));
           return;
         case org.apache.kafka.connect.data.Timestamp.LOGICAL_NAME:
           builder.appendStringQuoted(
-              DateTimeUtils.formatTimestamp((java.util.Date) value, timeZone)
+              DateTimeUtils.formatTimestamp((java.util.Date) value, zoneId)
           );
           return;
         default:
@@ -2033,5 +2120,19 @@ public class GenericDatabaseDialect implements DatabaseDialect {
   @Override
   public String toString() {
     return name();
+  }
+
+  @Override
+  public String resolveSynonym(Connection connection, String synonymName) throws SQLException {
+    DatabaseMetaData metadata = connection.getMetaData();
+    String tableName = parseTableIdentifier(synonymName).tableName();
+    ResultSet tableRs = metadata.getTables(null, null, tableName, new String[]{"SYNONYM"});
+    if (tableRs.next()) {
+      ResultSet synonymRs = metadata.getColumns(null, null, tableName, null);
+      if (synonymRs.next()) {
+        return synonymRs.getString("TABLE_NAME");
+      }
+    }
+    return null;
   }
 }

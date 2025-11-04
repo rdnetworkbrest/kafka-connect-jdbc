@@ -26,7 +26,7 @@
     <groupId>io.confluent</groupId>
     <artifactId>kafka-connect-jdbc</artifactId>
     <packaging>jar</packaging>
-    <version>10.9.0-SNAPSHOT</version>
+    <version>10.8.5</version>
     <name>kafka-connect-jdbc</name>
     <organization>
         <name>Confluent, Inc.</name>
@@ -49,7 +49,7 @@
         <connection>scm:git:git://github.com/confluentinc/kafka-connect-jdbc.git</connection>
         <developerConnection>scm:git:git@github.com:confluentinc/kafka-connect-jdbc.git</developerConnection>
         <url>https://github.com/confluentinc/kafka-connect-jdbc</url>
-        <tag>10.7.x</tag>
+        <tag>v10.8.5</tag>
     </scm>
 
     <properties>
@@ -68,16 +68,16 @@
         <project.package.home>target/${project.artifactId}-${project.version}-package</project.package.home>
         <maven.release.plugin.version>2.5.3</maven.release.plugin.version>
         <testcontainers.version>1.17.3</testcontainers.version>
-	    <jacoco.plugin.version>0.8.11</jacoco.plugin.version>
+	<jacoco.plugin.version>0.8.11</jacoco.plugin.version>
         <instruction.coverage.threshold>0.78</instruction.coverage.threshold>
         <branch.coverage.threshold>0.67</branch.coverage.threshold>
         <method.coverage.threshold>0.76</method.coverage.threshold>
         <class.coverage.threshold>0.91</class.coverage.threshold>
         <complexity.coverage.threshold>0.65</complexity.coverage.threshold>
         <line.coverage.threshold>0.80</line.coverage.threshold>
+        <dependency.check.skip>true</dependency.check.skip>
         <maven-surefire-plugin.version>3.0.0-M7</maven-surefire-plugin.version>
         <maven-failsafe-plugin.version>3.0.0-M7</maven-failsafe-plugin.version>
-        <dependency.check.skip>true</dependency.check.skip>
     </properties>
     <repositories>
         <repository>
@@ -105,6 +105,11 @@
             <artifactId>connect-runtime</artifactId>
             <version>${kafka.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.re2j</groupId>
+            <artifactId>re2j</artifactId>
+            <version>1.7</version>
         </dependency>
          <!-- JDBC drivers, only included in runtime so they get packaged -->
         <dependency>
@@ -439,7 +444,6 @@
                 <configuration>
                     <compilerArgs>
                         <arg>-Xlint:all</arg>
-                        <arg>-Werror</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>

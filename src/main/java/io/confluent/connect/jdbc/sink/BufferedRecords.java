@@ -143,7 +143,8 @@ public class BufferedRecords {
           schemaPair,
           fieldsMetadata,
           dbStructure.tableDefinition(connection, tableId),
-          config.insertMode
+          config.insertMode,
+          config.replaceNullWithDefault
       );
       if (config.deleteEnabled && nonNull(deleteSql)) {
         deletePreparedStatement = dbDialect.createPreparedStatement(connection, deleteSql);
@@ -153,7 +154,8 @@ public class BufferedRecords {
             schemaPair,
             fieldsMetadata,
             dbStructure.tableDefinition(connection, tableId),
-            config.insertMode
+            config.insertMode,
+            config.replaceNullWithDefault
         );
       }
     }
