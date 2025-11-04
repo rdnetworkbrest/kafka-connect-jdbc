@@ -815,10 +815,12 @@ public class JdbcSinkConfig extends AbstractConfig {
     useHoldlockInMerge = getBoolean(MSSQL_USE_MERGE_HOLDLOCK);
     trimSensitiveLogsEnabled = getBoolean(TRIM_SENSITIVE_LOG_ENABLED);
     dateCalendarSystem = DateCalendarSystem.fromConfigValue(getString(DATE_CALENDAR_SYSTEM_CONFIG));
+/* Do not check pkMode for deleted enabled, custom connector can delete by record value
     if (deleteEnabled && pkMode != PrimaryKeyMode.RECORD_KEY) {
       throw new ConfigException(
           "Primary key mode must be 'record_key' when delete support is enabled");
     }
+*/
     tableTypes = TableType.parse(getList(TABLE_TYPES_CONFIG));
   }
 
